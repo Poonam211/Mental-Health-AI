@@ -1,0 +1,7 @@
+Timestamp,City,Latitude,Longitude,Occupation,Age,Risk_Score,Risk_Level,Mental_State,Depression_Score,Anxiety_Score,Depression_Percent,Anxiety_Percent,Stress_Percent,Wellness_Score
+2026-06-24 17:02:04.062456,Kolkata,22.5726459,88.3638953,Student,25,48.55,Medium,Moderate Anxiety,14,12,51.85,57.14,48.55,51.45
+2026-06-24 17:12:42.302459,Satara,17.6361289,74.2982781,Business,68,34.06,Medium,Healthy,8,7,29.63,33.33,34.06,65.94
+2026-06-25 11:23:04.464063,Kolkata,22.5726459,88.3638953,Unemployed,52,34.05,Medium,Healthy,10,4,37.04,19.05,34.05,65.95
+2026-06-26 14:50:04,Pune,18.5213738,73.8545071,Employee,25,14.33,Low,Healthy,2,0,7.41,0.0,14.33,85.67
+2026-06-26 15:40:37,Mumbai,19.054999,72.8692035,Employee,28,20.14,Low,Healthy,3,2,11.11,9.52,20.14,79.86
+2026-06-26 15:54:10,Pune,18.5213738,73.8545071,Employee,25,31.17,Medium,Healthy,5,5,18.52,23.81,31.17,68.83
