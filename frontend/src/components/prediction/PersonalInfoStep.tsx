@@ -64,10 +64,10 @@ const PersonalInfoStep: React.FC<PersonalInfoStepProps> = ({
           </div>
         </div>
 
-        {/* 2. City Input Section */}
+        {/* 2. Address/Locality Input Section */}
         <div className="space-y-2.5">
           <label className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-            Residential City
+            Current Address / Locality
           </label>
           <div className="relative">
             <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
@@ -77,7 +77,7 @@ const PersonalInfoStep: React.FC<PersonalInfoStepProps> = ({
               type="text"
               value={city}
               onChange={(e) => setCity(e.target.value)}
-              placeholder="e.g. Pune"
+              placeholder="e.g. Sadashiv Dangat Nagar, Ambegaon Budruk, Pune"
               className="w-full pl-11 pr-4 py-3.5 bg-slate-50/40 dark:bg-slate-900/20 border border-slate-200 dark:border-slate-750/80 rounded-2xl text-slate-950 dark:text-white placeholder-slate-400 dark:placeholder-slate-550 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 font-bold text-sm transition-all duration-200"
               required
             />

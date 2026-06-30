@@ -5,18 +5,21 @@ import {
 } from 'recharts';
 import {
   FiActivity, FiHeart, FiAlertTriangle, FiMapPin, FiEye,
-  FiBriefcase, FiBookOpen, FiShield, FiPhoneCall
+  FiBriefcase, FiBookOpen, FiShield
 } from 'react-icons/fi';
 import { getDashboardStats, getAnalyticsDemographics, getReports } from '@/services/api';
+import { motion, AnimatePresence } from 'framer-motion';
+import NearbyServices from '@/components/prediction/NearbyServices';
 
 const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'Clinical' | 'Hospital' | 'Academic' | 'Corporate'>('Clinical');
   const [stats, setStats] = useState<any>(null);
-  const [demographics, setDemographics] = useState<any>(null);
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedReport, setSelectedReport] = useState<any>(null);
+  const [selectedTriageForServices, setSelectedTriageForServices] = useState<any>(null);
+  const [activeTriagePatient, setActiveTriagePatient] = useState<any>(null);
 
   // Fetch live data on mount
   useEffect(() => {
@@ -24,13 +27,12 @@ const Dashboard: React.FC = () => {
       setLoading(true);
       setError(null);
       try {
-        const [statsRes, demoRes, reportsRes] = await Promise.all([
+        const [statsRes, , reportsRes] = await Promise.all([
           getDashboardStats(),
           getAnalyticsDemographics(),
           getReports()
         ]);
         setStats(statsRes.data);
-        setDemographics(demoRes.data);
         setReports(reportsRes.data);
       } catch (err: any) {
         setError(err.message || String(err) || 'Failed to connect to the mental health analytics server.');
@@ -122,10 +124,19 @@ const Dashboard: React.FC = () => {
           sleep: r.Sleep_Hours || 6.0,
           phq: r.Depression_Score || 0,
           gad: r.Anxiety_Score || 0,
-          status: isCrisis ? 'Immediate Call Needed' : 'Triage Queue'
+          status: isCrisis ? 'Immediate Call Needed' : 'Triage Queue',
+          latitude: r.Latitude,
+          longitude: r.Longitude
         };
       });
   }, [reports]);
+
+  // Auto-select the first triage patient when list loads
+  useEffect(() => {
+    if (clinicalTriageList.length > 0 && !activeTriagePatient) {
+      setActiveTriagePatient(clinicalTriageList[0]);
+    }
+  }, [clinicalTriageList, activeTriagePatient]);
 
   // Academic Student Workspace Calculations
   const studentReports = useMemo(() => {
@@ -449,15 +460,6 @@ const Dashboard: React.FC = () => {
   }, [employeeReports]);
 
   // Dynamic Triage Metrics
-  const avgDispatchTriage = useMemo(() => {
-    const criticalCount = clinicalTriageList.filter((t: any) => t.level.includes('CRITICAL')).length;
-    return `${Math.min(45, 10 + criticalCount * 2)} Mins`;
-  }, [clinicalTriageList]);
-
-  const onCallClinicians = useMemo(() => {
-    return `${Math.min(15, 2 + Math.floor(reports.length / 8))} Active`;
-  }, [reports]);
-
   // Dynamic eating habits and stress index correlation
   const eatingHabitsStressData = useMemo(() => {
     const habits = [
@@ -802,22 +804,63 @@ const Dashboard: React.FC = () => {
       {/* Hospital Workspace */}
       {activeTab === 'Hospital' && (
         <div className="space-y-6">
-          {/* Hospital KPIs */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { title: 'Critical Escalations', value: clinicalTriageList.filter((t: any) => t.level.includes('CRITICAL')).length, sub: 'AI Crisis Intent Triggers', color: 'text-red-500', bg: 'from-red-50 to-red-100/5 dark:from-red-950/20 dark:to-slate-850/10 border-red-200 dark:border-red-900/40' },
-              { title: 'High-Risk Triage', value: clinicalTriageList.filter((t: any) => t.level.includes('HIGH')).length, sub: 'Clinical Risk Scores >= 60%', color: 'text-amber-500', bg: 'from-amber-50 to-amber-100/5 dark:from-amber-950/20 dark:to-slate-850/10 border-amber-200 dark:border-amber-900/40' },
-              { title: 'Avg Dispatch Triage', value: avgDispatchTriage, sub: 'Clinical response latency', color: 'text-indigo-600 dark:text-indigo-400', bg: 'from-indigo-50 to-indigo-100/5 dark:from-indigo-950/20 dark:to-slate-850/10 border-indigo-200 dark:border-indigo-900/40' },
-              { title: 'On-Call Clinicians', value: onCallClinicians, sub: 'Observatory duty roster', color: 'text-emerald-500', bg: 'from-emerald-50 to-emerald-100/5 dark:from-emerald-950/20 dark:to-slate-850/10 border-emerald-200 dark:border-emerald-900/40' }
-            ].map((k, i) => (
-              <div key={i} className={`bg-gradient-to-br ${k.bg} p-6 rounded-3xl border shadow-sm flex flex-col justify-between h-full backdrop-blur-md`}>
-                <p className="text-[9px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-wider">{k.title}</p>
-                <div className="mt-4 space-y-1">
-                  <h3 className={`text-3xl font-black ${k.color} leading-none tracking-tight`}>{k.value}</h3>
-                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-1">{k.sub}</p>
+          {/* Hospital KPIs & Referral Panel */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* KPI Cards (Left 2 Columns) */}
+            <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {[
+                { title: 'Critical Escalations', value: clinicalTriageList.filter((t: any) => t.level.includes('CRITICAL')).length, sub: 'AI Crisis Intent Triggers', color: 'text-red-500', bg: 'from-red-50 to-red-100/5 dark:from-red-950/20 dark:to-slate-850/10 border-red-200 dark:border-red-900/40' },
+                { title: 'High-Risk Triage', value: clinicalTriageList.filter((t: any) => t.level.includes('HIGH')).length, sub: 'Clinical Risk Scores >= 60%', color: 'text-amber-500', bg: 'from-amber-50 to-amber-100/5 dark:from-amber-950/20 dark:to-slate-850/10 border-amber-200 dark:border-amber-900/40' }
+              ].map((k, i) => (
+                <div key={i} className={`bg-gradient-to-br ${k.bg} p-6 rounded-3xl border shadow-sm flex flex-col justify-between h-full backdrop-blur-md`}>
+                  <p className="text-[9px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-wider">{k.title}</p>
+                  <div className="mt-4 space-y-1">
+                    <h3 className={`text-3xl font-black ${k.color} leading-none tracking-tight`}>{k.value}</h3>
+                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-1">{k.sub}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+
+            {/* Hospital Recommendations Panel (Right 2 Columns) */}
+            <div className="lg:col-span-2 bg-white dark:bg-slate-850/80 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-750/70 shadow-sm flex flex-col justify-between h-full backdrop-blur-md overflow-hidden">
+              {activeTriagePatient ? (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h4 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider">
+                        Active Triage Referral: {activeTriagePatient.id}
+                      </h4>
+                      <p className="text-[9px] text-slate-400 dark:text-slate-500 font-extrabold uppercase tracking-widest mt-0.5">
+                        Location: {activeTriagePatient.city}
+                      </p>
+                    </div>
+                    <span className="bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-100 dark:border-slate-800/65 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider">
+                      {activeTriagePatient.level}
+                    </span>
+                  </div>
+                  <div className="border-t border-slate-100 dark:border-slate-750/50 my-2" />
+                  <div className="max-h-64 overflow-y-auto pr-1">
+                    <NearbyServices 
+                      city={activeTriagePatient.city} 
+                      riskLevel={activeTriagePatient.level.includes('CRITICAL') ? 'Critical' : 'High'}
+                      latitude={activeTriagePatient.latitude}
+                      longitude={activeTriagePatient.longitude}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-center py-10 space-y-2">
+                  <FiMapPin className="w-8 h-8 text-slate-300 dark:text-slate-750" />
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-widest">
+                    No Active Triage Patient
+                  </p>
+                  <p className="text-[9px] text-slate-400 dark:text-slate-500 max-w-[200px] leading-relaxed">
+                    Select a patient in the triage queue below to view nearby mental health services.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Hospital Triage Queue Table */}
@@ -869,16 +912,16 @@ const Dashboard: React.FC = () => {
                             <span className="text-amber-505 font-semibold text-slate-750 dark:text-slate-300">GAD-7: {tr.gad}</span>
                           </td>
                           <td className="py-4 px-4 text-right">
-                            <a
-                              href={isCrisis ? "tel:+919820466726" : "#"}
-                              className={`inline-flex items-center space-x-1.5 text-[10px] font-black uppercase tracking-wider px-3.5 py-2 rounded-xl transition-all duration-200 ${isCrisis
-                                ? 'bg-red-600 text-white hover:bg-red-700 shadow-md shadow-red-200'
-                                : 'border border-indigo-200 text-indigo-600 dark:border-slate-700 dark:text-indigo-400 hover:bg-indigo-50/30'
-                                }`}
+                            <button
+                              onClick={() => {
+                                setActiveTriagePatient(tr);
+                                setSelectedTriageForServices(tr);
+                              }}
+                              className="inline-flex items-center space-x-1.5 text-[10px] font-black uppercase tracking-wider px-3.5 py-2 rounded-xl transition-all duration-200 border border-indigo-200 text-indigo-600 dark:border-slate-700 dark:text-indigo-400 hover:bg-indigo-50/30"
                             >
-                              <FiPhoneCall className="w-3.5 h-3.5" />
-                              <span>{isCrisis ? 'Emergency Contact' : 'Notify Clinician'}</span>
-                            </a>
+                              <FiMapPin className="w-3.5 h-3.5 text-indigo-500" />
+                              <span>Nearby Services</span>
+                            </button>
                           </td>
                         </tr>
                       );
@@ -1385,6 +1428,63 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Nearby Mental Health Services Modal */}
+      <AnimatePresence>
+        {selectedTriageForServices && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedTriageForServices(null)}
+              className="absolute inset-0 bg-slate-950/45 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.95, y: 12, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 12, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-750/80 rounded-3xl p-6 shadow-2xl max-w-4xl w-full relative z-10 space-y-5 text-left backdrop-blur-md overflow-y-auto max-h-[90vh]"
+            >
+              <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-800 pb-4">
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                    Nearby Clinical Services Referral
+                  </h3>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 font-extrabold uppercase tracking-widest mt-1">
+                    Emergency and Psychiatric recommendations for {selectedTriageForServices.id} ({selectedTriageForServices.city})
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedTriageForServices(null)}
+                  className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="py-2">
+                <NearbyServices
+                  city={selectedTriageForServices.city}
+                  riskLevel={selectedTriageForServices.level.includes('CRITICAL') ? 'Critical' : 'High'}
+                  latitude={selectedTriageForServices.latitude}
+                  longitude={selectedTriageForServices.longitude}
+                />
+              </div>
+
+              <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  onClick={() => setSelectedTriageForServices(null)}
+                  className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs transition-colors"
+                >
+                  Close Referral
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

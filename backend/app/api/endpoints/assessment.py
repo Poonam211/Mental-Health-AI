@@ -87,3 +87,16 @@ def predict_assessment(request: PredictionRequest, db: Session = Depends(get_db)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
 
+@router.get("/stats")
+def get_public_stats(db: Session = Depends(get_db)):
+    """
+    Get public statistics (total assessments and unique cities count)
+    """
+    try:
+        stats = report_service.get_dashboard_stats(db=db)
+        return {
+            "total_assessments": stats.get("total_reports", 0),
+            "unique_cities": stats.get("unique_cities", 0)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch public stats: {str(e)}")

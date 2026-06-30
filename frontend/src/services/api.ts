@@ -46,3 +46,5 @@ export const getDashboardStats = () => api.get('/dashboard/stats');
 export const getAnalyticsDemographics = () => api.get('/analytics/demographics');
 export const getMapData = () => api.get('/map/data');
 export const getRecommendations = (payload: any) => api.post('/recommendations', payload);
+export const getPublicStats = () => api.get('/assessment/stats');
+

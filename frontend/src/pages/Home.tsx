@@ -6,8 +6,26 @@ import {
   FiArrowRight, FiShield, FiCpu, FiCompass, 
   FiLock, FiFileText, FiCheck 
 } from 'react-icons/fi';
+import { getPublicStats } from '@/services/api';
 
 const Home: React.FC = () => {
+  const [stats, setStats] = React.useState<{ totalAssessments: number; uniqueCities: number } | null>(null);
+  const [loading, setLoading] = React.useState<boolean>(true);
+
+  React.useEffect(() => {
+    getPublicStats()
+      .then((res) => {
+        setStats({
+          totalAssessments: res.data.total_assessments,
+          uniqueCities: res.data.unique_cities,
+        });
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('Error fetching public stats:', err);
+        setLoading(false);
+      });
+  }, []);
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -225,7 +243,9 @@ const Home: React.FC = () => {
             {/* Stat 2: Counter Entry */}
             <motion.div variants={itemVariants} className="flex flex-col items-center text-center space-y-3">
               <div className="h-20 flex items-center justify-center">
-                <h3 className="text-4xl font-black text-indigo-600 dark:text-indigo-400 tracking-tight">10k+</h3>
+                <h3 className="text-4xl font-black text-indigo-600 dark:text-indigo-400 tracking-tight">
+                  {loading ? '...' : (stats?.totalAssessments.toLocaleString() ?? '0')}
+                </h3>
               </div>
               <h4 className="text-sm font-black text-slate-800 dark:text-slate-200">Assessments Administered</h4>
               <p className="text-xs text-slate-400 dark:text-slate-400 max-w-[200px] leading-relaxed">Anonymized questionnaires processed in sandbox registries.</p>
@@ -242,7 +262,9 @@ const Home: React.FC = () => {
                   <FiMapPin className="w-7 h-7 text-emerald-600 dark:text-emerald-400" />
                 </motion.div>
               </div>
-              <h4 className="text-sm font-black text-slate-800 dark:text-slate-200">24 Urban Hubs</h4>
+              <h4 className="text-sm font-black text-slate-800 dark:text-slate-200">
+                {loading ? '...' : stats?.uniqueCities} Urban Hubs
+              </h4>
               <p className="text-xs text-slate-400 dark:text-slate-400 max-w-[200px] leading-relaxed">Geographic stress levels mapped dynamically across major Indian cities.</p>
             </motion.div>
 
