@@ -9,15 +9,35 @@ const api = axios.create({
   },
 });
 
+// Request interceptor to automatically inject authorization headers
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 // Global error handling interceptor
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     const errorMsg = error.response?.data?.detail || error.message || 'An unknown error occurred';
     console.error('API Request Failed:', errorMsg);
-    return Promise.reject(errorMsg);
+    
+    // Create a standard Error object and attach the response so that
+    // AuthContext can inspect it (e.g. to check for 401 status)
+    const customError = new Error(errorMsg);
+    (customError as any).response = error.response;
+    return Promise.reject(customError);
   }
 );
+
 
 export default api;
 export const predictAssessment = (payload: any) => api.post('/assessment/predict', payload);

@@ -14,10 +14,11 @@ interface ReviewStepProps {
   symptoms: string;
   phqAnswers: string[];
   gadAnswers: string[];
+  eatingHabits: string;
 }
 
 const ReviewStep: React.FC<ReviewStepProps> = ({
-  age, city, gender, occupation, physicalActivity, chronicIllness, sleepHours, mentalHistory, daysOfTreatment, symptoms, phqAnswers, gadAnswers
+  age, city, gender, occupation, physicalActivity, chronicIllness, sleepHours, mentalHistory, daysOfTreatment, symptoms, phqAnswers, gadAnswers, eatingHabits
 }) => {
   
   const optionScores: Record<string, number> = {
@@ -71,6 +72,7 @@ const ReviewStep: React.FC<ReviewStepProps> = ({
               <li className="flex justify-between"><span>Mental Health History:</span> <span className="font-bold text-slate-850 dark:text-white">{mentalHistory}</span></li>
               <li className="flex justify-between"><span>Average Sleep:</span> <span className="font-bold text-slate-850 dark:text-white">{sleepHours} hrs</span></li>
               <li className="flex justify-between"><span>Days of Treatment:</span> <span className="font-bold text-slate-850 dark:text-white">{daysOfTreatment} days</span></li>
+              <li className="flex justify-between"><span>Eating Habits:</span> <span className="font-bold text-slate-850 dark:text-white">{eatingHabits}</span></li>
             </ul>
           </div>
         </Grid>

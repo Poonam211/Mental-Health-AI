@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 from backend.app.core import database, security
+from backend.app.core.database import User, get_db
 
 router = APIRouter()
 
@@ -46,17 +48,14 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
     return username
 
 @router.post("/register", response_model=UserProfileResponse, status_code=status.HTTP_201_CREATED)
-def register(user_data: UserRegisterSchema):
+def register(user_data: UserRegisterSchema, db: Session = Depends(get_db)):
     """
-    Registers a new clinical administrator, hashing their password and persisting them to SQLite.
+    Registers a new clinical administrator, hashing their password and persisting them to the database.
     """
-    conn = database.get_db_connection()
-    cursor = conn.cursor()
-    
     try:
         # Check if the username is already registered
-        cursor.execute("SELECT id FROM users WHERE username = ?", (user_data.username,))
-        if cursor.fetchone():
+        existing_user = db.query(User).filter(User.username == user_data.username).first()
+        if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Username is already registered"
@@ -66,82 +65,61 @@ def register(user_data: UserRegisterSchema):
         hashed = security.hash_password(user_data.password)
         
         # Insert user into the database
-        cursor.execute(
-            "INSERT INTO users (username, hashed_password) VALUES (?, ?)",
-            (user_data.username, hashed)
-        )
-        conn.commit()
-        
-        # Fetch the created user
-        cursor.execute("SELECT username, created_at FROM users WHERE username = ?", (user_data.username,))
-        row = cursor.fetchone()
+        new_user = User(username=user_data.username, hashed_password=hashed)
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
         
         return UserProfileResponse(
-            username=row["username"],
-            created_at=row["created_at"]
+            username=new_user.username,
+            created_at=new_user.created_at.strftime("%Y-%m-%d %H:%M:%S")
         )
     except HTTPException:
-        # Re-raise HTTP exceptions to be handled by FastAPI
         raise
     except Exception as e:
+        db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Database error during registration: {str(e)}"
         )
-    finally:
-        conn.close()
 
 @router.post("/login", response_model=TokenResponse)
-def login(user_data: UserLoginSchema):
+def login(user_data: UserLoginSchema, db: Session = Depends(get_db)):
     """
     Authenticates username and password, returning a secure JWT token on success.
     """
-    conn = database.get_db_connection()
-    cursor = conn.cursor()
+    user = db.query(User).filter(User.username == user_data.username).first()
     
-    try:
-        cursor.execute("SELECT hashed_password FROM users WHERE username = ?", (user_data.username,))
-        row = cursor.fetchone()
-        
-        if not row or not security.verify_password(user_data.password, row["hashed_password"]):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect username or password",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        
-        # Generate JWT access token
-        access_token = security.create_access_token(data={"sub": user_data.username})
-        
-        return TokenResponse(
-            access_token=access_token,
-            token_type="bearer",
-            username=user_data.username
+    if not user or not security.verify_password(user_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
         )
-    finally:
-        conn.close()
+    
+    # Generate JWT access token
+    access_token = security.create_access_token(data={"sub": user.username})
+    
+    return TokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+        username=user.username
+    )
 
 @router.get("/me", response_model=UserProfileResponse)
-def get_me(current_user: str = Depends(get_current_user)):
+def get_me(current_user: str = Depends(get_current_user), db: Session = Depends(get_db)):
     """
     Returns the authenticated user's profile.
     """
-    conn = database.get_db_connection()
-    cursor = conn.cursor()
+    user = db.query(User).filter(User.username == current_user).first()
     
-    try:
-        cursor.execute("SELECT username, created_at FROM users WHERE username = ?", (current_user,))
-        row = cursor.fetchone()
-        
-        if not row:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User profile not found"
-            )
-            
-        return UserProfileResponse(
-            username=row["username"],
-            created_at=row["created_at"]
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User profile not found"
         )
-    finally:
-        conn.close()
+        
+    return UserProfileResponse(
+        username=user.username,
+        created_at=user.created_at.strftime("%Y-%m-%d %H:%M:%S")
+    )

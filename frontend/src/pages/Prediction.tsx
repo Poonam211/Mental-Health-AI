@@ -20,13 +20,14 @@ const Prediction: React.FC = () => {
   const [age, setAge] = useState<number>(25);
   const [city, setCity] = useState<string>('Pune');
   const [gender, setGender] = useState<string>('Male');
-  const [occupation, setOccupation] = useState<string>('Employee');
+  const [occupation, setOccupation] = useState<string>('');
   const [physicalActivity, setPhysicalActivity] = useState<string>('Moderate');
   const [chronicIllness, setChronicIllness] = useState<string>('No');
   const [sleepHours, setSleepHours] = useState<number>(7.0);
   const [mentalHistory, setMentalHistory] = useState<string>('No');
   const [daysOfTreatment, setDaysOfTreatment] = useState<number>(30);
   const [symptoms, setSymptoms] = useState<string>('');
+  const [eatingHabits, setEatingHabits] = useState<string>('Balanced');
 
   const [phqAnswers, setPhqAnswers] = useState<string[]>(Array(9).fill('Not at all'));
   const [gadAnswers, setGadAnswers] = useState<string[]>(Array(7).fill('Not at all'));
@@ -80,13 +81,14 @@ const Prediction: React.FC = () => {
     setAge(25);
     setCity('Pune');
     setGender('Male');
-    setOccupation('Employee');
+    setOccupation('');
     setPhysicalActivity('Moderate');
     setChronicIllness('No');
     setSleepHours(7.0);
     setMentalHistory('No');
     setDaysOfTreatment(30);
     setSymptoms('');
+    setEatingHabits('Balanced');
     setPhqAnswers(Array(9).fill('Not at all'));
     setGadAnswers(Array(7).fill('Not at all'));
   };
@@ -107,7 +109,8 @@ const Prediction: React.FC = () => {
       days_of_treatment: daysOfTreatment,
       phq_answers: phqAnswers,
       gad_answers: gadAnswers,
-      symptoms
+      symptoms,
+      eating_habits: eatingHabits
     };
     
     try {
@@ -115,7 +118,7 @@ const Prediction: React.FC = () => {
       setResult(response.data);
       setActiveStep(6); // Advance to results
     } catch (err: any) {
-      setError(err || 'Failed to calculate mental health risk. Please check your network connection.');
+      setError(err.message || String(err) || 'Failed to calculate mental health risk. Please check your network connection.');
     } finally {
       setLoading(false);
     }
@@ -149,6 +152,8 @@ const Prediction: React.FC = () => {
             setMentalHistory={setMentalHistory}
             daysOfTreatment={daysOfTreatment}
             setDaysOfTreatment={setDaysOfTreatment}
+            eatingHabits={eatingHabits}
+            setEatingHabits={setEatingHabits}
           />
         );
       case 2:
@@ -187,6 +192,7 @@ const Prediction: React.FC = () => {
             symptoms={symptoms}
             phqAnswers={phqAnswers}
             gadAnswers={gadAnswers}
+            eatingHabits={eatingHabits}
           />
         );
       case 6:

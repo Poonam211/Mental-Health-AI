@@ -10,10 +10,12 @@ interface HealthInfoStepProps {
   setMentalHistory: (val: string) => void;
   daysOfTreatment: number;
   setDaysOfTreatment: (val: number) => void;
+  eatingHabits: string;
+  setEatingHabits: (val: string) => void;
 }
 
 const HealthInfoStep: React.FC<HealthInfoStepProps> = ({
-  chronicIllness, setChronicIllness, sleepHours, setSleepHours, mentalHistory, setMentalHistory, daysOfTreatment, setDaysOfTreatment
+  chronicIllness, setChronicIllness, sleepHours, setSleepHours, mentalHistory, setMentalHistory, daysOfTreatment, setDaysOfTreatment, eatingHabits, setEatingHabits
 }) => {
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -151,6 +153,40 @@ const HealthInfoStep: React.FC<HealthInfoStepProps> = ({
           <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase">
             <span>0 days</span>
             <span>365 days</span>
+          </div>
+        </div>
+
+        {/* 5. Eating Habits Selection */}
+        <div className="md:col-span-2 space-y-2.5">
+          <label className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+            Daily Eating Habits & Diet
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {[
+              { value: 'Balanced', label: 'Balanced', desc: 'Whole foods, regular meals' },
+              { value: 'Irregular', label: 'Irregular', desc: 'Skipping meals, unstable schedule' },
+              { value: 'Veg/Vegan', label: 'Vegetarian/Vegan', desc: 'Plant-based diet' },
+              { value: 'Junk food', label: 'High Sugar/Junk', desc: 'Processed foods, quick snacks' }
+            ].map((opt) => {
+              const isSelected = eatingHabits === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setEatingHabits(opt.value)}
+                  className={`p-4 rounded-2xl border text-left transition-all duration-200 flex flex-col space-y-1.5 h-full ${
+                    isSelected
+                      ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-500/10 dark:shadow-none'
+                      : 'bg-white dark:bg-slate-850 border-slate-200 dark:border-slate-750/80 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'
+                  }`}
+                >
+                  <span className="text-sm font-black">{opt.label}</span>
+                  <span className={`text-[10px] font-bold leading-relaxed ${isSelected ? 'text-indigo-100' : 'text-slate-400'}`}>
+                    {opt.desc}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 

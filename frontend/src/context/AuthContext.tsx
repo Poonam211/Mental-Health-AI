@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '@/services/api';
 
 interface User {
   username: string;
@@ -25,15 +25,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Helper to configure Axios headers
-  const setAxiosAuthHeader = (jwtToken: string | null) => {
-    if (jwtToken) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${jwtToken}`;
-    } else {
-      delete axios.defaults.headers.common['Authorization'];
-    }
-  };
-
   // Initialize auth state from localStorage on mount
   useEffect(() => {
     const initializeAuth = async () => {
@@ -43,13 +34,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (storedToken && storedUsername) {
         setToken(storedToken);
         setUser({ username: storedUsername });
-        setAxiosAuthHeader(storedToken);
 
-        // Optional: Verify token by calling /api/auth/me
+        // Verify token by calling /auth/me
         try {
-          await axios.get('/api/auth/me', {
-            headers: { Authorization: `Bearer ${storedToken}` }
-          });
+          await api.get('/auth/me');
         } catch (err) {
           // If token is invalid/expired, log out
           console.error("Session token validation failed, logging out", err);
@@ -62,9 +50,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initializeAuth();
   }, []);
 
-  // Set up Axios global interceptor to catch 401s and force logout
+  // Set up Axios interceptor to catch 401s and force logout
   useEffect(() => {
-    const interceptor = axios.interceptors.response.use(
+    const interceptor = api.interceptors.response.use(
       (response) => response,
       (error) => {
         if (error.response && error.response.status === 401) {
@@ -76,7 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     return () => {
-      axios.interceptors.response.eject(interceptor);
+      api.interceptors.response.eject(interceptor);
     };
   }, []);
 
@@ -85,13 +73,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('auth_username');
     setToken(null);
     setUser(null);
-    setAxiosAuthHeader(null);
   };
 
   const login = async (username: string, password: string) => {
     setError(null);
     try {
-      const response = await axios.post('/api/auth/login', { username, password });
+      const response = await api.post('/auth/login', { username, password });
       const { access_token, username: responseUsername } = response.data;
 
       localStorage.setItem('auth_token', access_token);
@@ -99,9 +86,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setToken(access_token);
       setUser({ username: responseUsername });
-      setAxiosAuthHeader(access_token);
     } catch (err: any) {
-      const msg = err.response?.data?.detail || 'Failed to login. Please check your credentials.';
+      const msg = typeof err === 'string' ? err : err.response?.data?.detail || 'Failed to login. Please check your credentials.';
       setError(msg);
       throw new Error(msg);
     }
@@ -111,12 +97,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     try {
       // Create user
-      await axios.post('/api/auth/register', { username, password });
+      await api.post('/auth/register', { username, password });
       
-      // Auto-login after successful registration for premium UX
+      // Auto-login after successful registration
       await login(username, password);
     } catch (err: any) {
-      const msg = err.response?.data?.detail || 'Registration failed. Username may already be taken.';
+      const msg = typeof err === 'string' ? err : err.response?.data?.detail || 'Registration failed. Username may already be taken.';
       setError(msg);
       throw new Error(msg);
     }

@@ -18,10 +18,7 @@ const PersonalInfoStep: React.FC<PersonalInfoStepProps> = ({
   age, setAge, city, setCity, gender, setGender, occupation, setOccupation, physicalActivity, setPhysicalActivity
 }) => {
   
-  const occupationsList = [
-    'Student', 'Employee', 'Farmer', 'Homemaker', 'Business', 
-    'Freelancer', 'Retired', 'Unemployed', 'Other'
-  ];
+
 
   const activities = [
     { value: 'Low', label: 'Low', desc: 'Sedentary lifestyle, minimal movement' },
@@ -117,27 +114,20 @@ const PersonalInfoStep: React.FC<PersonalInfoStepProps> = ({
         {/* 4. Occupation Select Section */}
         <div className="md:col-span-2 space-y-2.5">
           <label className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-            Occupational Status
+            Occupational Background & Daily Situation
           </label>
           <div className="relative">
-            <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
-              <FiBriefcase className="w-4.5 h-4.5" />
+            <span className="absolute top-4.5 left-0 pl-4 flex items-start pointer-events-none text-slate-400 dark:text-slate-500">
+              <FiBriefcase className="w-4.5 h-4.5 mt-0.5" />
             </span>
-            <select
+            <textarea
+              rows={2}
               value={occupation}
               onChange={(e) => setOccupation(e.target.value)}
-              className="w-full pl-11 pr-10 py-3.5 bg-slate-50/40 dark:bg-slate-900/20 border border-slate-200 dark:border-slate-750/80 rounded-2xl text-slate-950 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 font-bold text-sm transition-all duration-200 appearance-none cursor-pointer"
-            >
-              {occupationsList.map((job) => (
-                <option key={job} value={job} className="dark:bg-slate-850">
-                  {job}
-                </option>
-              ))}
-            </select>
-            {/* Custom arrow decoration */}
-            <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-400">
-              ▼
-            </div>
+              placeholder="Describe your current situation (e.g. software engineer working remotely under project deadlines, full-time student preparing for exams, homemaker caring for children...)"
+              className="w-full pl-11 pr-4 py-3.5 bg-slate-50/40 dark:bg-slate-900/20 border border-slate-200 dark:border-slate-750/80 rounded-2xl text-slate-950 dark:text-white placeholder-slate-400 dark:placeholder-slate-550 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 font-bold text-sm transition-all duration-200 leading-relaxed resize-none"
+              required
+            />
           </div>
         </div>
 

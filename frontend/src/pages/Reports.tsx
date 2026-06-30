@@ -13,16 +13,16 @@ import { getReports } from '@/services/api';
 const CustomChartTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-slate-900/95 dark:bg-slate-950/95 backdrop-blur-md border border-slate-200/20 dark:border-slate-800/85 p-4 rounded-2xl shadow-2xl space-y-1.5 text-left text-xs min-w-[160px]">
-        <p className="font-black text-slate-800 dark:text-white text-xs flex items-center space-x-1.5">
+      <div className="bg-slate-900/95 dark:bg-slate-955/95 backdrop-blur-md border border-slate-800 dark:border-slate-800/80 p-4 rounded-2xl shadow-2xl space-y-1.5 text-left text-xs min-w-[160px]">
+        <p className="font-black text-white text-xs flex items-center space-x-1.5">
           <span className="text-indigo-400">📊</span>
           <span>{label || 'Intake Metric'}</span>
         </p>
-        <hr className="border-slate-200/30 dark:border-slate-800 my-1" />
+        <hr className="border-slate-800 my-1" />
         {payload.map((pld: any) => (
-          <div key={pld.name} className="flex justify-between items-center space-x-3 font-semibold">
-            <span className="text-slate-400">{pld.name}:</span>
-            <span className="font-black text-slate-700 dark:text-white">{pld.value}</span>
+          <div key={pld.name} className="flex justify-between items-center space-x-3 font-semibold text-xs">
+            <span className="text-slate-300">{pld.name}:</span>
+            <span className="font-black text-white">{pld.value}</span>
           </div>
         ))}
       </div>
@@ -42,6 +42,28 @@ const Reports: React.FC = () => {
   const [cityFilter, setCityFilter] = useState<string>('All');
   const [occupationFilter, setOccupationFilter] = useState<string>('All');
 
+  // Sorting & Pagination States
+  const [sortField, setSortField] = useState<string>('Timestamp');
+  const [sortAsc, setSortAsc] = useState<boolean>(false);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [selectedReport, setSelectedReport] = useState<any | null>(null);
+  const recordsPerPage = 12;
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, riskFilter, cityFilter, occupationFilter]);
+
+  // Handle click-to-sort
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortAsc(!sortAsc);
+    } else {
+      setSortField(field);
+      setSortAsc(true);
+    }
+  };
+
   // Fetch live reports on mount
   useEffect(() => {
     const fetchReportsData = async () => {
@@ -51,7 +73,7 @@ const Reports: React.FC = () => {
         const response = await getReports();
         setReports(response.data);
       } catch (err: any) {
-        setError(err || 'Failed to connect to the clinical reports database.');
+        setError(err.message || String(err) || 'Failed to connect to the clinical reports database.');
       } finally {
         setLoading(false);
       }
@@ -85,6 +107,7 @@ const Reports: React.FC = () => {
       }));
   }, [reports]);
 
+
   // Client-Side Search and Advanced Filters
   const filteredReports = useMemo(() => {
     return reports.filter(r => {
@@ -100,6 +123,45 @@ const Reports: React.FC = () => {
       return matchesSearch && matchesRisk && matchesCity && matchesOcc;
     });
   }, [reports, searchTerm, riskFilter, cityFilter, occupationFilter]);
+
+  // Sorted Dataset
+  const sortedReports = useMemo(() => {
+    const data = [...filteredReports];
+    data.sort((a, b) => {
+      let aVal = a[sortField];
+      let bVal = b[sortField];
+      
+      if (sortField === 'Risk_Score') {
+        aVal = a.Risk_Score || 0;
+        bVal = b.Risk_Score || 0;
+      } else if (sortField === 'Age') {
+        aVal = a.Age || 0;
+        bVal = b.Age || 0;
+      } else if (sortField === 'Depression_Score') {
+        aVal = a.Depression_Score || 0;
+        bVal = b.Depression_Score || 0;
+      } else if (sortField === 'Anxiety_Score') {
+        aVal = a.Anxiety_Score || 0;
+        bVal = b.Anxiety_Score || 0;
+      } else {
+        aVal = String(aVal || '').toLowerCase();
+        bVal = String(bVal || '').toLowerCase();
+      }
+
+      if (aVal < bVal) return sortAsc ? -1 : 1;
+      if (aVal > bVal) return sortAsc ? 1 : -1;
+      return 0;
+    });
+    return data;
+  }, [filteredReports, sortField, sortAsc]);
+
+  // Paginated Dataset
+  const paginatedReports = useMemo(() => {
+    const startIndex = (currentPage - 1) * recordsPerPage;
+    return sortedReports.slice(startIndex, startIndex + recordsPerPage);
+  }, [sortedReports, currentPage]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedReports.length / recordsPerPage));
 
   // Dynamic Calculations for Charts (From Filtered Dataset)
   const riskDistribution = useMemo(() => {
@@ -550,7 +612,7 @@ const Reports: React.FC = () => {
       <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-50 dark:border-slate-850 pb-4">
           <div>
-            <h3 className="text-base font-black text-slate-850 dark:text-white flex items-center space-x-2">
+            <h3 className="text-base font-black text-slate-855 dark:text-white flex items-center space-x-2">
               <FiFileText className="text-indigo-600 dark:text-indigo-400 w-4 h-4" />
               <span>Clinical Intake Records Feed</span>
             </h3>
@@ -560,7 +622,7 @@ const Reports: React.FC = () => {
             <button
               onClick={handleDownloadPDF}
               disabled={filteredReports.length === 0}
-              className="flex-1 sm:flex-none flex items-center justify-center space-x-2 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold py-2.5 px-4 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 sm:flex-none flex items-center justify-center space-x-2 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-855 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold py-2.5 px-4 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FiPrinter className="w-3.5 h-3.5" />
               <span>Print PDF Report</span>
@@ -580,45 +642,96 @@ const Reports: React.FC = () => {
         <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-850 shadow-sm">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-50 dark:bg-slate-950 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-slate-100 dark:border-slate-850">
+              <tr className="bg-slate-50 dark:bg-slate-950 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-slate-100 dark:border-slate-855">
                 <th className="py-4.5 px-6">#</th>
-                <th className="py-4.5 px-6">Timestamp</th>
-                <th className="py-4.5 px-6">City</th>
-                <th className="py-4.5 px-6">Age</th>
-                <th className="py-4.5 px-6">Occupation</th>
-                <th className="py-4.5 px-6">Risk Score</th>
+                <th className="py-4.5 px-6 cursor-pointer hover:bg-slate-100/50 dark:hover:bg-slate-900/30 transition-colors" onClick={() => handleSort('Timestamp')}>
+                  <div className="flex items-center space-x-1">
+                    <span>Timestamp</span>
+                    {sortField === 'Timestamp' && (sortAsc ? '▲' : '▼')}
+                  </div>
+                </th>
+                <th className="py-4.5 px-6 cursor-pointer hover:bg-slate-100/50 dark:hover:bg-slate-900/30 transition-colors" onClick={() => handleSort('City')}>
+                  <div className="flex items-center space-x-1">
+                    <span>City Hub</span>
+                    {sortField === 'City' && (sortAsc ? '▲' : '▼')}
+                  </div>
+                </th>
+                <th className="py-4.5 px-6 cursor-pointer hover:bg-slate-100/50 dark:hover:bg-slate-900/30 transition-colors" onClick={() => handleSort('Age')}>
+                  <div className="flex items-center space-x-1">
+                    <span>Age</span>
+                    {sortField === 'Age' && (sortAsc ? '▲' : '▼')}
+                  </div>
+                </th>
+                <th className="py-4.5 px-6 cursor-pointer hover:bg-slate-100/50 dark:hover:bg-slate-900/30 transition-colors" onClick={() => handleSort('Occupation')}>
+                  <div className="flex items-center space-x-1">
+                    <span>Occupation</span>
+                    {sortField === 'Occupation' && (sortAsc ? '▲' : '▼')}
+                  </div>
+                </th>
+                <th className="py-4.5 px-6 cursor-pointer hover:bg-slate-100/50 dark:hover:bg-slate-900/30 transition-colors" onClick={() => handleSort('Risk_Score')}>
+                  <div className="flex items-center space-x-1">
+                    <span>Risk Score</span>
+                    {sortField === 'Risk_Score' && (sortAsc ? '▲' : '▼')}
+                  </div>
+                </th>
                 <th className="py-4.5 px-6">Risk Level</th>
                 <th className="py-4.5 px-6">Mental State</th>
-                <th className="py-4.5 px-6 text-center">PHQ-9</th>
-                <th className="py-4.5 px-6 text-center">GAD-7</th>
+                <th className="py-4.5 px-6 text-center cursor-pointer hover:bg-slate-100/50 dark:hover:bg-slate-900/30 transition-colors" onClick={() => handleSort('Depression_Score')}>
+                  <div className="flex items-center justify-center space-x-1">
+                    <span>PHQ-9</span>
+                    {sortField === 'Depression_Score' && (sortAsc ? '▲' : '▼')}
+                  </div>
+                </th>
+                <th className="py-4.5 px-6 text-center cursor-pointer hover:bg-slate-100/50 dark:hover:bg-slate-900/30 transition-colors" onClick={() => handleSort('Anxiety_Score')}>
+                  <div className="flex items-center justify-center space-x-1">
+                    <span>GAD-7</span>
+                    {sortField === 'Anxiety_Score' && (sortAsc ? '▲' : '▼')}
+                  </div>
+                </th>
+                <th className="py-4.5 px-6 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-850 text-xs font-semibold text-slate-700 dark:text-slate-300">
-              {filteredReports.map((r, idx) => (
-                <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/40 transition-colors duration-150">
-                  <td className="py-4.5 px-6 text-slate-400 dark:text-slate-500 font-medium">{idx + 1}</td>
+              {paginatedReports.map((r, idx) => (
+                <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-955/40 transition-colors duration-150">
+                  <td className="py-4.5 px-6 text-slate-400 dark:text-slate-500 font-medium">
+                    {(currentPage - 1) * recordsPerPage + idx + 1}
+                  </td>
                   <td className="py-4.5 px-6 font-mono text-slate-400 dark:text-slate-500">{r.Timestamp}</td>
                   <td className="py-4.5 px-6 text-slate-900 dark:text-white font-extrabold">{r.City}</td>
                   <td className="py-4.5 px-6">{r.Age}</td>
                   <td className="py-4.5 px-6">{r.Occupation}</td>
                   <td className="py-4.5 px-6 text-slate-900 dark:text-white font-black">{r.Risk_Score.toFixed(1)}%</td>
                   <td className="py-4.5 px-6">
-                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                      r.Risk_Level === 'High' ? 'bg-red-500/10 text-red-600 border border-red-500/10' :
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                      r.Risk_Level === 'High' ? 'bg-red-500/10 text-red-655 border border-red-500/10' :
                       r.Risk_Level === 'Medium' || r.Risk_Level === 'Moderate' ? 'bg-amber-500/10 text-amber-600 border border-amber-500/10' :
                       'bg-emerald-500/10 text-emerald-600 border border-emerald-500/10'
                     }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
+                        r.Risk_Level === 'High' ? 'bg-red-500' :
+                        r.Risk_Level === 'Medium' || r.Risk_Level === 'Moderate' ? 'bg-amber-500' :
+                        'bg-emerald-500'
+                      }`} />
                       {r.Risk_Level}
                     </span>
                   </td>
                   <td className="py-4.5 px-6 text-slate-900 dark:text-white">{r.Mental_State}</td>
                   <td className="py-4.5 px-6 text-center font-extrabold text-indigo-600 dark:text-indigo-500">{r.Depression_Score}/27</td>
                   <td className="py-4.5 px-6 text-center font-extrabold text-violet-600 dark:text-violet-500">{r.Anxiety_Score}/21</td>
+                  <td className="py-4.5 px-6 text-right">
+                    <button
+                      onClick={() => setSelectedReport(r)}
+                      className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-455 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors"
+                    >
+                      View Details
+                    </button>
+                  </td>
                 </tr>
               ))}
-              {filteredReports.length === 0 && (
+              {paginatedReports.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="text-center py-12 text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
+                  <td colSpan={11} className="text-center py-12 text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
                     No clinical reports match the active filter criteria.
                   </td>
                 </tr>
@@ -626,7 +739,249 @@ const Reports: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        {sortedReports.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-100 dark:border-slate-850">
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
+              Showing <span className="font-extrabold text-slate-800 dark:text-white">{Math.min(sortedReports.length, (currentPage - 1) * recordsPerPage + 1)}</span> to{' '}
+              <span className="font-extrabold text-slate-800 dark:text-white">{Math.min(sortedReports.length, currentPage * recordsPerPage)}</span> of{' '}
+              <span className="font-extrabold text-slate-800 dark:text-white">{sortedReports.length}</span> records
+            </span>
+            <div className="flex items-center space-x-1.5">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(page => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
+                .map((page, idx, arr) => {
+                  const showEllipsis = idx > 0 && page - arr[idx - 1] > 1;
+                  return (
+                    <React.Fragment key={page}>
+                      {showEllipsis && <span className="text-slate-400 px-1 text-xs">...</span>}
+                      <button
+                        onClick={() => setCurrentPage(page)}
+                        className={`w-8 h-8 flex items-center justify-center text-xs font-black rounded-xl border transition-all ${
+                          currentPage === page
+                            ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-600/15'
+                            : 'bg-slate-50 dark:bg-slate-955 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    </React.Fragment>
+                  );
+                })}
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Detail View Modal */}
+      {selectedReport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-955/40 backdrop-blur-sm animate-fadeIn">
+          <div 
+            className="absolute inset-0 bg-slate-955/40" 
+            onClick={() => setSelectedReport(null)}
+          />
+          
+          <div className="relative w-full max-w-4xl bg-white dark:bg-slate-900 border border-slate-250 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] z-10 animate-scaleIn text-left">
+            
+            {/* Modal Header */}
+            <div className="flex justify-between items-center px-6 py-4 border-b border-slate-150 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+              <div>
+                <div className="flex items-center space-x-3">
+                  <span className="text-xs font-black px-2.5 py-1 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-mono">
+                    Assessment Report
+                  </span>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                    selectedReport.Risk_Level === 'High' 
+                      ? 'bg-red-500/10 text-red-650 border border-red-500/20' 
+                      : selectedReport.Risk_Level === 'Medium' || selectedReport.Risk_Level === 'Moderate'
+                        ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20' 
+                        : 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
+                      selectedReport.Risk_Level === 'High' ? 'bg-red-500' : selectedReport.Risk_Level === 'Medium' || selectedReport.Risk_Level === 'Moderate' ? 'bg-amber-500' : 'bg-emerald-500'
+                    }`} />
+                    {selectedReport.Risk_Level} Risk
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-wider mt-1">
+                  Recorded on {selectedReport.Timestamp}
+                </p>
+              </div>
+              <button 
+                onClick={() => setSelectedReport(null)}
+                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              
+              {/* Grid 1: Demographics & Clinical Scorecards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                {/* Profile Card */}
+                <div className="bg-slate-50 dark:bg-slate-950 p-5 rounded-2xl border border-slate-100 dark:border-slate-850 space-y-3">
+                  <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-slate-200/40 dark:border-slate-800 pb-2">
+                    👤 Demographics Profile
+                  </h4>
+                  <div className="space-y-2 text-xs font-bold text-slate-600 dark:text-slate-455">
+                    <p className="flex justify-between"><span>Age:</span> <span className="text-slate-900 dark:text-white font-extrabold">{selectedReport.Age} years</span></p>
+                    <p className="flex justify-between"><span>Occupation:</span> <span className="text-slate-900 dark:text-white font-extrabold capitalize">{selectedReport.Occupation}</span></p>
+                    <p className="flex justify-between"><span>Location Hub:</span> <span className="text-slate-900 dark:text-white font-extrabold">{selectedReport.City}</span></p>
+                  </div>
+                </div>
+
+                {/* Scorecard 1: Stress & Wellness */}
+                <div className="bg-slate-50 dark:bg-slate-955 p-5 rounded-2xl border border-slate-100 dark:border-slate-855 space-y-3">
+                  <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-slate-200/40 dark:border-slate-800 pb-2">
+                    📈 Clinical Indexes
+                  </h4>
+                  <div className="space-y-2 text-xs font-bold text-slate-600 dark:text-slate-455">
+                    <p className="flex justify-between"><span>Stress Percent:</span> <span className="text-red-500 dark:text-red-400 font-extrabold">{selectedReport.Risk_Score.toFixed(1)}%</span></p>
+                    <p className="flex justify-between"><span>Wellness Index:</span> <span className="text-emerald-500 dark:text-emerald-400 font-extrabold">{selectedReport.Wellness_Score || 'N/A'}/100</span></p>
+                    <p className="flex justify-between"><span>Mental State:</span> <span className="text-slate-900 dark:text-white font-extrabold capitalize">{selectedReport.Mental_State}</span></p>
+                  </div>
+                </div>
+
+                {/* Scorecard 2: Clinical Scales */}
+                <div className="bg-slate-50 dark:bg-slate-955 p-5 rounded-2xl border border-slate-100 dark:border-slate-855 space-y-3">
+                  <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-slate-200/40 dark:border-slate-800 pb-2">
+                    🧬 Diagnostic Scales
+                  </h4>
+                  <div className="space-y-2 text-xs font-bold text-slate-600 dark:text-slate-455">
+                    <p className="flex justify-between"><span>Depression (PHQ-9):</span> <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">{selectedReport.Depression_Score}/27</span></p>
+                    <p className="flex justify-between"><span>Anxiety (GAD-7):</span> <span className="text-violet-600 dark:text-violet-400 font-extrabold">{selectedReport.Anxiety_Score}/21</span></p>
+                    <p className="flex justify-between"><span>Sleep Duration:</span> <span className="text-slate-900 dark:text-white font-extrabold">{selectedReport.Sleep_Hours || 'N/A'} hrs/day</span></p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 2: Symptoms & Lifestyle */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* Symptom Context */}
+                <div className="bg-slate-50 dark:bg-slate-950 p-5 rounded-2xl border border-slate-100 dark:border-slate-850 space-y-3">
+                  <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-slate-200/40 dark:border-slate-800 pb-2">
+                    💬 Patient Reported Symptoms
+                  </h4>
+                  <p className="text-xs font-bold text-slate-705 dark:text-slate-300 leading-relaxed bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80 min-h-[80px]">
+                    {selectedReport.Symptoms || selectedReport.Symptom_Context || 'No raw symptom context recorded in the intake log.'}
+                  </p>
+                </div>
+
+                {/* Lifestyle & Habits */}
+                <div className="bg-slate-50 dark:bg-slate-950 p-5 rounded-2xl border border-slate-100 dark:border-slate-850 space-y-3">
+                  <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-slate-200/40 dark:border-slate-800 pb-2">
+                    🥗 Lifestyle & Habits
+                  </h4>
+                  <div className="space-y-2.5 text-xs font-bold text-slate-600 dark:text-slate-455">
+                    <p className="flex justify-between"><span>Eating Habits:</span> <span className="text-slate-900 dark:text-white font-extrabold capitalize">{selectedReport.Eating_Habits || 'N/A'}</span></p>
+                    <p className="flex justify-between"><span>Physical Activity:</span> <span className="text-slate-900 dark:text-white font-extrabold capitalize">{selectedReport.Physical_Activity || 'N/A'}</span></p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 3: AI Clinical Analysis */}
+              {selectedReport.Symptom_Analysis && (
+                <div className="bg-slate-50 dark:bg-slate-955 p-5 rounded-2xl border border-slate-100 dark:border-slate-855 space-y-4">
+                  <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-slate-200/40 dark:border-slate-800 pb-2">
+                    🤖 AI Clinical Insights & Stress Sub-Dimensions
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center text-xs font-bold">
+                        <span className="text-slate-600 dark:text-slate-400">Crisis Intent Score:</span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                          selectedReport.Symptom_Analysis.Intent_Crisis_Alert >= 6 ? 'bg-red-500/15 text-red-600' : 'bg-slate-105 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                        }`}>
+                          {selectedReport.Symptom_Analysis.Intent_Crisis_Alert}/10
+                        </span>
+                      </div>
+                      <div className="text-xs font-bold">
+                        <span className="text-slate-600 dark:text-slate-400 block mb-1">Detected Emotions:</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {selectedReport.Symptom_Analysis.Detected_Emotions?.map((e: string, idx: number) => (
+                            <span key={idx} className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wide">
+                              {e}
+                            </span>
+                          )) || <span className="text-slate-400">None detected</span>}
+                        </div>
+                      </div>
+                      <div className="text-xs font-bold">
+                        <span className="text-slate-600 dark:text-slate-400 block mb-1">Primary Stressors:</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {selectedReport.Symptom_Analysis.Primary_Stressors?.map((s: string, idx: number) => (
+                            <span key={idx} className="bg-violet-500/10 text-violet-600 dark:text-violet-400 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wide">
+                              {s}
+                            </span>
+                          )) || <span className="text-slate-400">None detected</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Stress sub-dimensions */}
+                    {selectedReport.Symptom_Analysis.Stress_Subdimensions && (
+                      <div className="space-y-2.5 text-[11px] font-bold text-slate-650 dark:text-slate-400">
+                        {Object.entries(selectedReport.Symptom_Analysis.Stress_Subdimensions).map(([key, val]: any) => (
+                          <div key={key} className="space-y-1">
+                            <div className="flex justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                              <span className="capitalize">{key.replace('_', ' ')}:</span>
+                              <span>{val.toFixed(1)}%</span>
+                            </div>
+                            <div className="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                              <div className="h-full bg-indigo-500" style={{ width: `${val}%` }} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Explainable Clinical Summary */}
+                  {selectedReport.Symptom_Analysis.Explainable_Clinical_Summary && (
+                    <div className="mt-4 pt-4 border-t border-slate-200/40 dark:border-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 leading-relaxed">
+                      <span className="font-black text-slate-900 dark:text-white block mb-1 uppercase tracking-wide text-[10px]">Explainable Clinical Summary:</span>
+                      <p className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-100 dark:border-slate-800/80">
+                        {selectedReport.Symptom_Analysis.Explainable_Clinical_Summary}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-150 dark:border-slate-800 flex justify-end">
+              <button 
+                onClick={() => setSelectedReport(null)}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-600/10"
+              >
+                Close View
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}      
     </div>
   );
 };

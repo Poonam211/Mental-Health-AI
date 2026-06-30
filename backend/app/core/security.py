@@ -4,12 +4,20 @@ import base64
 import json
 import hmac
 import time
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Dict, Any, Optional
 
-SECRET_KEY = os.getenv("JWT_SECRET", "super-secure-mental-health-ai-clinical-secret-key-2026")
+SECRET_KEY = os.getenv("JWT_SECRET")
+IS_PROD = os.getenv("ENV") == "production" or os.getenv("NODE_ENV") == "production"
+
+if not SECRET_KEY:
+    if IS_PROD:
+        raise RuntimeError("JWT_SECRET environment variable is REQUIRED in production!")
+    SECRET_KEY = "super-secure-mental-health-ai-clinical-secret-key-2026"
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours (1 day)
+
 
 def hash_password(password: str) -> str:
     """
